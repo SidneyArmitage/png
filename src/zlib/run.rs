@@ -1,4 +1,5 @@
 use super::code;
+use super::retrieve::retrieve;
 
 pub enum State {
   HLIT,
@@ -11,7 +12,9 @@ pub fn run(buf: &[u8], byte: usize, bit: u8, get_code: &code::Fixed_Code) -> (St
 
   let mut offset = bit;
   let mut index = byte;
-  let (out, mut index, mut offset) = get_code.process(buf, index, offset);
+  let (out, mut new_index, mut new_offset) = get_code.process(buf, index, offset);
+  index = new_index;
+  offset = new_offset;
   if out < 256 {
     // copy value to output
     println!("{:b}", out);
@@ -26,34 +29,34 @@ pub fn run(buf: &[u8], byte: usize, bit: u8, get_code: &code::Fixed_Code) -> (St
         3
       },
       265..=268 => {
-        let distance = (11 + buf[index + ((offset as usize + 1) / 8)] & (0b10000000u8 >> (offset + 1) % 8)) as u16;
-        offset += 1 % 8;
-        index += (offset as usize + 1) / 8;
-        distance
+        let (distance, new_index, new_offset) = retrieve(buf, index, offset, 1);
+        index = new_index;
+        offset = new_offset;
+        distance + 11
       },
       269..=272 => {
-        let distance = 19 + (u16::from_be_bytes([buf[index], buf[index + 1]]) & (0b11000000_00000000u16 >> offset + 1)) as u16;
-        offset += 2 % 8;
-        index += (offset as usize + 2) / 8;
-        distance
+        let (distance, new_index, new_offset) = retrieve(buf, index, offset, 2);
+        index = new_index;
+        offset = new_offset;
+        distance + 19
       },
       273..=276 => {
-        let distance = 35 + (u16::from_be_bytes([buf[index], buf[index + 1]]) & (0b11100000_00000000u16 >> offset + 1)) as u16;
-        offset += 3 % 8;
-        index += (offset as usize + 3) / 8;
-        distance
+        let (distance, new_index, new_offset) = retrieve(buf, index, offset, 3);
+        index = new_index;
+        offset = new_offset;
+        distance + 35
       },
       277..=280 => {
-        let distance = 67 + (u16::from_be_bytes([buf[index], buf[index + 1]]) & (0b11110000_00000000u16 >> offset + 1)) as u16;
-        offset += 4 % 8;
-        index += (offset as usize + 4) / 8;
-        distance
+        let (distance, new_index, new_offset) = retrieve(buf, index, offset, 4);
+        index = new_index;
+        offset = new_offset;
+        distance + 67
       },
       281..=284 => {
-        let distance = 131 + (u16::from_be_bytes([buf[index], buf[index + 1]]) & (0b11111000_00000000u16 >> offset + 1)) as u16;
-        offset += 5 % 8;
-        index += (offset as usize + 5) / 8;
-        distance
+        let (distance, new_index, new_offset) = retrieve(buf, index, offset, 5);
+        index = new_index;
+        offset = new_offset;
+        distance + 131
       },
       285 => {
         258

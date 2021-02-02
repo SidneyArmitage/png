@@ -50,19 +50,10 @@ impl Fixed_Code {
   }
   // test for skip byte (starts on bit 7)
   pub fn process(&self, buf: &[u8], byte: usize, bit: u8) -> (u16, usize, u8) {
-    // let inverse = (9 + (bit as i8)) % 8;
-    // let mut cur = (((buf[byte].reverse_bits() << bit)) as u16) << 1;
-    // cur += match inverse {
-    //   0 => ((buf[byte + 1])).reverse_bits() as u16,
-    //   _ => (((buf[byte + ((bit as usize + 9) / 8)].reverse_bits()) >> ((8 - inverse)) % 8) as u16),
-    // };
     let (cur, _, _) = retrieve::retrieve(buf, byte, bit, 9);
-    println!("{}", cur);
-    println!("{}", self.values[cur as usize]);
-    println!("{}", self.offsets[cur as usize]);
     (
       self.values[cur as usize],
-      byte +(((bit + self.offsets[cur as usize])as usize) / 8),
+      byte + (((bit + self.offsets[cur as usize])as usize) / 8),
       (bit + self.offsets[cur as usize]) % 8,
     )
   }
@@ -70,38 +61,27 @@ impl Fixed_Code {
 
 // byte l-r pick r-l display l-r
 pub fn fixed_code(buf: &[u8], byte: usize, bit: u8) -> (u16, usize, u8) {
-  let inverse = (8 - (bit as i8)) % 8;
-  let mut cur = buf[byte] >> bit;
-  if inverse != 0 {
-    cur += buf[byte + ((bit as usize + 8) / 8)] << inverse;
-  }
-  cur = cur.reverse_bits();
-  if cur <= 0b0010_1111u8 {
+  let (cur, _, _) = retrieve::retrieve(buf, byte, bit, 8);
+  if cur <= 0b0010_1111u16 {
     println!("256-279, {:b}", cur);
     return (
       (cur >> 1) as u16 + 256,
       byte + ((bit as usize + 7) / 8),
       (bit + 7) % 8,
     );
-  } else if cur <= 0b1011_1111u8 {
+  } else if cur <= 0b1011_1111u16 {
     println!("0-143, {:b}", cur);
     return (cur as u16 - 0b0011_0000u16, byte + 1, bit);
-  } else if cur <= 0b11000111u8 {
+  } else if cur <= 0b11000111u16 {
     println!("280-287, {:b}", cur);
     return (cur as u16 - 0b11000000u16 + 280, byte + 1, bit);
   } else {
     println!("144-255, {:b}", cur);
-    let new_inverse = (9 - ((bit) as i8)) % 8;
-    let new_cur = (cur as u16) << 1;
-    let over = match (bit + 9) % 8 {
-      0 => ((buf[byte + 1]) >> bit) as u16 + new_cur,
-      _ => (((buf[byte + ((bit as usize + 9) / 8)]) >> (8 - new_inverse)) as u16 + new_cur),
-    };
-    println!("{:b} {:b}", new_cur, over);
+    let (cur, final_byte, final_bit) = retrieve::retrieve(buf, byte, bit, 9);
     return (
-      over - 0b1_1001_0000 + 144,
-      byte + ((bit as usize + 9) / 8),
-      (bit + 9) % 8,
+      cur - 0b1_1001_0000 + 144,
+      final_byte,
+      final_bit,
     );
   }
 }
